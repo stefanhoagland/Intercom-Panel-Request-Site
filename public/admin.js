@@ -125,7 +125,7 @@ function renderTree(tree) {
             el('td', { class: 'muted' }, p.submittedAt ? `${when(p.submittedAt)}${p.submittedBy ? ' · ' + p.submittedBy : ''}` : ''),
             el('td', { style: 'white-space:nowrap;text-align:right' },
               el('button', { onclick: () => openViewer(p.id) }, 'View'), ' ',
-              el('button', { onclick: () => renameThing('positions', p, 'position') }, 'Rename'), ' ',
+              el('button', { onclick: () => editPosition(p) }, 'Edit'), ' ',
               el('button', { class: 'danger', onclick: () => deleteThing('positions', p, 'Its key choices are deleted too.') }, 'Delete'))))))),
         el('div', { style: 'margin-top:8px' }, inlineAdd('New position name', (name) => api('positions', { method: 'POST', body: { roomId: room.id, name } })))));
     }
@@ -325,4 +325,22 @@ $('iGo').onclick = async () => {
   $('importDlg').close();
   refresh();
   alert(`Added ${added} positions to ${importShow.name}.`);
+};
+
+// ---------- edit a position's name, alpha and port ----------
+let editing = null;
+function editPosition(p) {
+  editing = p;
+  $('eName').value = p.name; $('eAlpha').value = p.alpha || ''; $('ePort').value = p.port || '';
+  $('eError').textContent = '';
+  $('editDlg').showModal();
+  $('eName').focus();
+}
+$('eCancel').onclick = () => $('editDlg').close();
+$('editForm').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!$('eName').value.trim()) { $('eError').textContent = 'Name is required.'; return; }
+  await api('positions/' + editing.id, { method: 'PATCH', body: { name: $('eName').value, alpha: $('eAlpha').value, port: $('ePort').value } });
+  $('editDlg').close();
+  refresh();
 };

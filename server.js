@@ -351,6 +351,8 @@ async function handleApi(req, res, url) {
       if (!isAdmin) return send(res, 403, { error: 'Admin only' });
       const body = await readJson(req);
       if (cleanName(body.name)) pos.name = cleanName(body.name);
+      if (body.alpha !== undefined) pos.alpha = str(body.alpha, 8).trim();
+      if (body.port !== undefined) pos.port = str(body.port, 8).trim();
       if (['not_started', 'draft', 'submitted', 'programmed'].includes(body.status)) {
         pos.status = body.status;
         pos.programmedAt = body.status === 'programmed' ? new Date().toISOString() : null;
