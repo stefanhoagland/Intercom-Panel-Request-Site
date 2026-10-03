@@ -15,7 +15,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const MAX_UPLOAD = 15 * 1024 * 1024;
 
 const PANELS = { kp4016: 16, kp5032: 32 };
-const LABEL_MAX = 10;
+const LABEL_MAX = 8;
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -23,7 +23,7 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 function emptyKeys() {
   const keys = {};
   for (const [panel, count] of Object.entries(PANELS)) {
-    keys[panel] = Array.from({ length: count }, () => ({ label: '', talk: true, listen: true, notes: '' }));
+    keys[panel] = Array.from({ length: count }, () => ({ label: '' }));
   }
   return keys;
 }
@@ -111,15 +111,7 @@ function cleanKeys(input) {
   const keys = emptyKeys();
   for (const panel of Object.keys(PANELS)) {
     const list = Array.isArray(input?.[panel]) ? input[panel] : [];
-    keys[panel] = keys[panel].map((def, i) => {
-      const k = list[i] || {};
-      return {
-        label: str(k.label, LABEL_MAX),
-        talk: k.talk === undefined ? def.talk : !!k.talk,
-        listen: k.listen === undefined ? def.listen : !!k.listen,
-        notes: str(k.notes, 200),
-      };
-    });
+    keys[panel] = keys[panel].map((_, i) => ({ label: str(list[i]?.label, LABEL_MAX) }));
   }
   return keys;
 }

@@ -46,21 +46,15 @@
     <div class="editor-grid">
       <div>
         <div class="card">
-          <p class="muted" style="margin-top:0">Click a key to set what it should say and do. The KP-4016 sits on top and the KP-5032 sits below it.</p>
+          <p class="muted" style="margin-top:0">Click a key to set what it should say and do</p>
           <div id="rack"></div>
         </div>
       </div>
       <div class="side">
         <div class="card keyform">
           <h2 id="keyTitle">Key</h2>
-          <label for="kLabel">Label on the display (up to <span id="labelMax">10</span> characters)</label>
-          <input id="kLabel" type="text" maxlength="10" placeholder="e.g. PRODUCER">
-          <div class="checks">
-            <label><input type="checkbox" id="kTalk"> Talk</label>
-            <label><input type="checkbox" id="kListen"> Listen</label>
-          </div>
-          <label for="kNotes">Notes (who it should reach, IFB, party line…)</label>
-          <textarea id="kNotes" rows="3"></textarea>
+          <label for="kLabel">Label on the display (up to <span id="labelMax">8</span> characters)</label>
+          <input id="kLabel" type="text" maxlength="8" placeholder="e.g. PRODUCER">
           <div class="row" style="margin-top:10px">
             <button id="prevKey">← Prev</button>
             <button id="nextKey">Next →</button>

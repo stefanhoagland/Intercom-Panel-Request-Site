@@ -70,7 +70,7 @@ function refreshStatus() {
   const locked = current.status === 'programmed';
   $('submit').disabled = locked;
   $('submit').textContent = current.status === 'submitted' ? 'Submitted. Submit again after changes' : 'Submit, ready to program';
-  for (const id of ['kLabel', 'kTalk', 'kListen', 'kNotes', 'contact', 'notes', 'clearKey']) $(id).disabled = locked;
+  for (const id of ['kLabel', 'contact', 'notes', 'clearKey']) $(id).disabled = locked;
   if (locked) $('saveState').textContent = 'This panel has been programmed. Ask Stefan to reopen it for changes.';
 }
 
@@ -84,9 +84,6 @@ function loadKeyForm() {
   const k = selKey();
   $('keyTitle').textContent = `${selected.panel === 'kp4016' ? 'KP-4016' : 'KP-5032'} · key ${selected.index + 1}`;
   $('kLabel').value = k.label;
-  $('kTalk').checked = k.talk;
-  $('kListen').checked = k.listen;
-  $('kNotes').value = k.notes;
 }
 
 function step(dir) {
@@ -101,18 +98,14 @@ $('nextKey').onclick = () => step(1);
 $('kLabel').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); step(1); } });
 
 function onKeyEdit() {
-  Object.assign(selKey(), {
-    label: $('kLabel').value.toUpperCase().slice(0, config.labelMax),
-    talk: $('kTalk').checked, listen: $('kListen').checked, notes: $('kNotes').value,
-  });
+  selKey().label = $('kLabel').value.toUpperCase().slice(0, config.labelMax);
   $('kLabel').value = selKey().label;
   draw();
   queueSave();
 }
-for (const id of ['kLabel', 'kNotes']) $(id).addEventListener('input', onKeyEdit);
-for (const id of ['kTalk', 'kListen']) $(id).addEventListener('change', onKeyEdit);
+$('kLabel').addEventListener('input', onKeyEdit);
 for (const id of ['contact', 'notes']) $(id).addEventListener('input', queueSave);
-$('clearKey').onclick = () => { Object.assign(selKey(), { label: '', talk: true, listen: true, notes: '' }); loadKeyForm(); draw(); queueSave(); };
+$('clearKey').onclick = () => { selKey().label = ''; loadKeyForm(); draw(); queueSave(); };
 
 function queueSave() {
   $('saveState').textContent = 'Saving…';

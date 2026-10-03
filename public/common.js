@@ -45,15 +45,13 @@ function renderRack(container, keys, { onPick, selected } = {}) {
       for (let c = 0; c < perRow; c++) {
         const i = r * perRow + c;
         const k = list[i];
-        const tl = !k.label ? '' : k.talk && k.listen ? 'TALK+LSN' : k.talk ? 'TALK' : k.listen ? 'LISTEN' : '';
         const isSel = selected && selected.panel === panel && selected.index === i;
         row.append(el('button', {
           class: 'key' + (isSel ? ' sel' : ''), type: 'button', disabled: !onPick,
-          title: k.notes || '', onclick: onPick ? () => onPick(panel, i) : null,
+          onclick: onPick ? () => onPick(panel, i) : null,
         },
           el('div', { class: 'lcd' + (k.label ? '' : ' empty') }, k.label || '—'),
           el('div', { class: 'num' }, String(i + 1)),
-          el('div', { class: 'tl' }, tl || ' '),
         ));
       }
       rack.append(row);

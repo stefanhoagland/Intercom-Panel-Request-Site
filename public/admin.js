@@ -99,8 +99,7 @@ async function openViewer(id) {
   for (const [panel, label] of [['kp4016', 'KP-4016'], ['kp5032', 'KP-5032']]) {
     viewing.keys[panel].forEach((k, i) => {
       if (!k.label) return;
-      const mode = k.talk && k.listen ? 'Talk/Listen' : k.talk ? 'Talk' : k.listen ? 'Listen' : 'No talk/listen';
-      list.append(el('div', {}, el('strong', {}, `${label} ${i + 1}: ${k.label}`), ` · ${mode}`, k.notes ? ` · ${k.notes}` : ''));
+      list.append(el('div', {}, el('strong', {}, `${label} ${i + 1}:`), ` ${k.label}`));
     });
   }
   if (!list.children.length) list.append(el('p', { class: 'muted' }, 'No keys set yet.'));

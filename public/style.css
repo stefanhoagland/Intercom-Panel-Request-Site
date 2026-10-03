@@ -48,7 +48,6 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
 .key .lcd { background: var(--lcd); color: var(--lcd-text); font: 10px/1.4 ui-monospace, Menlo, Consolas, monospace; border-radius: 2px; padding: 3px 1px; min-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .key .lcd.empty { color: #3f6b55; }
 .key .num { font-size: 10px; color: #9aa5b1; margin-top: 3px; }
-.key .tl { font-size: 9px; color: #9aa5b1; }
 .key.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
 .key[disabled] { cursor: default; opacity: 1; }
 
@@ -56,8 +55,6 @@ label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px
 .side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .side > .card { margin-bottom: 0; }
 @media (max-width: 760px) { .side { grid-template-columns: 1fr; } }
-.keyform .checks { display: flex; gap: 16px; margin-top: 10px; }
-.keyform .checks label { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--text); font-size: 14px; }
 
 .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
 .photos figure { margin: 0; }
