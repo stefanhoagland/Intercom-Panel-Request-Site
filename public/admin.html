@@ -47,6 +47,18 @@
 
     <div class="card">
       <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0;flex:1">Backups</h2>
+        <input id="backupFilter" type="text" placeholder="Search backups" style="width:220px">
+      </div>
+      <p class="muted" style="margin-top:0">Saved copies of panels. Open a position and click <strong>Save backup</strong> to add one. Each is also stored as a file in the server's <code>backups</code> folder.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Saved</th><th>Panel</th><th>Note</th><th>Keys</th><th></th></tr></thead>
+        <tbody id="backupRows"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
         <h2 style="margin:0;flex:1">Reference photos</h2>
         <form id="photoForm" class="row">
           <input id="photoCaption" type="text" placeholder="Caption (optional)" style="width:200px">
@@ -70,9 +82,18 @@
   <div id="vRack"></div>
   <h2 style="margin-top:16px">Key list</h2>
   <div id="vList" class="keylist"></div>
-  <div class="row" style="margin-top:16px">
+  <div class="row" style="margin-top:16px" id="vPosActions">
     <button id="vProgrammed" class="primary">Mark programmed</button>
     <button id="vReopen">Reopen for changes</button>
+    <button id="vBackup">Save backup</button>
+    <span id="vBackupMsg" class="muted"></span>
+  </div>
+  <div class="row hidden" style="margin-top:16px" id="vBackupActions">
+    <label for="vRestoreTo" style="margin:0">Restore these keys into</label>
+    <select id="vRestoreTo"></select>
+    <button id="vRestore" class="primary">Restore</button>
+    <a id="vDownload" class="btn" style="text-decoration:none">Download file</a>
+    <button id="vDeleteBackup" class="danger" style="margin-left:auto">Delete backup</button>
   </div>
 </dialog>
 

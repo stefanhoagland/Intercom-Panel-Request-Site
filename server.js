@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const USER_PASSWORD = process.env.USER_PASSWORD || 'intercom';
@@ -18,6 +19,7 @@ const PANELS = { kp4016: 16, kp5032: 32 };
 const LABEL_MAX = 8;
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 // ---------- storage ----------
 function emptyKeys() {
@@ -31,7 +33,7 @@ function emptyKeys() {
 // Hierarchy: show -> control room -> position. Each position owns one KP-4016 + KP-5032.
 function loadDb() {
   if (!fs.existsSync(DB_FILE)) {
-    const db = { shows: [], rooms: [], positions: [], notifications: [], photos: [], nextId: 1 };
+    const db = { shows: [], rooms: [], positions: [], notifications: [], photos: [], backups: [], nextId: 1 };
     const show = newShow(db, 'Sample Show');
     const room = newRoom(db, show.id, 'Control Room A');
     for (const name of ['Director', 'Producer', 'Audio A1', 'Graphics']) {
@@ -41,6 +43,7 @@ function loadDb() {
   }
   const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   // Data saved before shows existed: put its positions under one show and room.
+  db.backups ||= [];
   if (!db.shows) {
     db.shows = []; db.rooms = [];
     const show = newShow(db, 'My Show');
@@ -318,6 +321,58 @@ async function handleApi(req, res, url) {
     if (m === 'DELETE') {
       if (!isAdmin) return send(res, 403, { error: 'Admin only' });
       db.positions = db.positions.filter((p) => p.id !== id);
+      saveDb();
+      return send(res, 200, { ok: true });
+    }
+  }
+
+  // Saved copies of a panel's keys. Each is also written as a JSON file in DATA_DIR/backups.
+  if (parts[0] === 'positions' && parts[2] === 'backup' && m === 'POST') {
+    if (!isAdmin) return send(res, 403, { error: 'Admin only' });
+    const pos = db.positions.find((p) => p.id === Number(parts[1]));
+    if (!pos) return send(res, 404, { error: 'No such position' });
+    const names = summary(pos);
+    const savedAt = new Date().toISOString();
+    const backup = {
+      id: crypto.randomUUID(), positionId: pos.id, showName: names.showName, roomName: names.roomName,
+      positionName: pos.name, label: str((await readJson(req)).label, 80).trim(), savedAt,
+      submittedBy: pos.submittedBy, submittedAt: pos.submittedAt, notes: pos.notes, keys: JSON.parse(JSON.stringify(pos.keys)),
+    };
+    const slug = [names.showName, names.roomName, pos.name].join(' - ').replace(/[^\w\- ]+/g, '').trim().slice(0, 100);
+    backup.file = `${savedAt.slice(0, 10)} ${slug} ${backup.id.slice(0, 8)}.json`;
+    fs.writeFileSync(path.join(BACKUP_DIR, backup.file), JSON.stringify(backup, null, 2));
+    db.backups.unshift(backup); saveDb();
+    return send(res, 201, backup);
+  }
+  if (parts[0] === 'backups') {
+    if (!isAdmin) return send(res, 403, { error: 'Admin only' });
+    if (!parts[1] && m === 'GET') {
+      return send(res, 200, db.backups.map(({ keys, ...b }) => ({ ...b, keysUsed: Object.values(keys).flat().filter((k) => k.label).length })));
+    }
+    const backup = db.backups.find((b) => b.id === parts[1]);
+    if (!backup) return send(res, 404, { error: 'No such backup' });
+    if (parts[2] === 'download' && m === 'GET') {
+      return send(res, 200, JSON.stringify(backup, null, 2), {
+        'Content-Type': 'application/json',
+        'Content-Disposition': `attachment; filename="${(backup.file || 'backup.json').replace(/"/g, '')}"`,
+      });
+    }
+    // Copy the saved keys into a position (the original one by default).
+    if (parts[2] === 'restore' && m === 'POST') {
+      const { positionId } = await readJson(req);
+      const target = db.positions.find((p) => p.id === (positionId || backup.positionId));
+      if (!target) return send(res, 400, { error: 'Pick a position to restore into' });
+      target.keys = cleanKeys(backup.keys);
+      target.status = 'draft';
+      target.programmedAt = null;
+      target.updatedAt = new Date().toISOString();
+      saveDb();
+      return send(res, 200, summary(target));
+    }
+    if (m === 'GET') return send(res, 200, backup);
+    if (m === 'DELETE') {
+      if (backup.file) fs.rmSync(path.join(BACKUP_DIR, backup.file), { force: true });
+      db.backups = db.backups.filter((b) => b !== backup);
       saveDb();
       return send(res, 200, { ok: true });
     }

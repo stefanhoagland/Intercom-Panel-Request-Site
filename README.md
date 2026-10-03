@@ -4,7 +4,7 @@ Operators log in with one shared password, pick their show, then their control r
 
 ## Pages
 - `/` operator page (shared password)
-- `/admin` admin page (separate admin password): notifications, add shows (or copy an earlier show's control rooms and positions), add control rooms and positions, hide old shows from operators, view and print each panel's key list, mark a panel programmed or reopen it, upload reference photos that operators see.
+- `/admin` admin page (separate admin password): notifications, add shows (or copy an earlier show's control rooms and positions), add control rooms and positions, hide old shows from operators, view and print each panel's key list, mark a panel programmed or reopen it, save backups of any panel and restore them later (each backup is also a JSON file in `DATA_DIR/backups`), upload reference photos that operators see.
 
 ## Run it
 Needs Node 18 or newer. No packages to install.

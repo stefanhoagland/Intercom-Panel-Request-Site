@@ -14,6 +14,7 @@ async function start() {
   show('dash');
   refresh();
   loadPhotos();
+  loadBackups();
   clearInterval(pollTimer);
   pollTimer = setInterval(() => refresh(false), 15000);
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
@@ -139,19 +140,91 @@ async function openViewer(id) {
   $('vMeta').replaceChildren(badge(viewing.status),
     viewing.submittedBy ? `  Submitted by ${viewing.submittedBy} on ${when(viewing.submittedAt)}` : '',
     viewing.notes ? el('div', { style: 'margin-top:6px;color:var(--text)' }, 'Notes: ' + viewing.notes) : '');
-  renderRack($('vRack'), viewing.keys);
+  $('vPosActions').classList.remove('hidden');
+  $('vBackupActions').classList.add('hidden');
+  $('vBackupMsg').textContent = '';
+  fillViewer(viewing.keys);
+}
+
+// A backup opens in the same viewer, with restore/download/delete instead of status buttons.
+async function openBackup(id) {
+  const [b, tree] = await Promise.all([api('backups/' + id), api('tree')]);
+  viewing = { backup: b };
+  $('vTitle').textContent = 'Backup: ' + placeOf(b);
+  $('vMeta').replaceChildren(`Saved ${when(b.savedAt)}`, b.label ? ` · ${b.label}` : '',
+    b.submittedBy ? ` · submitted by ${b.submittedBy}` : '',
+    b.notes ? el('div', { style: 'margin-top:6px;color:var(--text)' }, 'Notes: ' + b.notes) : '');
+  const select = $('vRestoreTo');
+  select.innerHTML = '';
+  for (const p of tree.positions) {
+    select.append(el('option', { value: p.id, selected: p.id === b.positionId }, placeOf({ showName: p.showName, roomName: p.roomName, positionName: p.name }) + (p.id === b.positionId ? ' (original)' : '')));
+  }
+  $('vRestore').disabled = !tree.positions.length;
+  $('vDownload').href = `/api/backups/${b.id}/download`;
+  $('vPosActions').classList.add('hidden');
+  $('vBackupActions').classList.remove('hidden');
+  fillViewer(b.keys);
+}
+
+function fillViewer(keys) {
+  renderRack($('vRack'), keys);
   const list = $('vList');
   list.innerHTML = '';
   for (const [panel, label] of [['kp4016', 'KP-4016'], ['kp5032', 'KP-5032']]) {
-    viewing.keys[panel].forEach((k, i) => {
+    keys[panel].forEach((k, i) => {
       if (!k.label) return;
       list.append(el('div', {}, el('strong', {}, `${label} ${i + 1}:`), ` ${k.label}`));
     });
   }
   if (!list.children.length) list.append(el('p', { class: 'muted' }, 'No keys set yet.'));
   $('vProgrammed').disabled = viewing.status === 'programmed';
-  $('viewer').showModal();
+  if (!$('viewer').open) $('viewer').showModal();
 }
+$('vBackup').onclick = async () => {
+  const label = prompt('Optional note for this backup (e.g. "as programmed for opening night")', '');
+  if (label === null) return;
+  await api(`positions/${viewing.id}/backup`, { method: 'POST', body: { label } });
+  $('vBackupMsg').textContent = 'Backup saved.';
+  loadBackups();
+};
+$('vRestore').onclick = async () => {
+  const option = $('vRestoreTo').selectedOptions[0];
+  if (!confirm(`Replace all keys on ${option.textContent.replace(' (original)', '')} with this backup? Its current keys will be overwritten.`)) return;
+  await api(`backups/${viewing.backup.id}/restore`, { method: 'POST', body: { positionId: Number(option.value) } });
+  $('viewer').close();
+  refresh();
+  alert('Restored. The panel is back to "In progress" so the operator can review it and submit.');
+};
+$('vDeleteBackup').onclick = async () => {
+  if (!confirm('Delete this backup and its file? This can\'t be undone.')) return;
+  await api('backups/' + viewing.backup.id, { method: 'DELETE' });
+  $('viewer').close();
+  loadBackups();
+};
+
+let backups = [];
+async function loadBackups() {
+  backups = await api('backups');
+  renderBackups();
+}
+function renderBackups() {
+  const q = $('backupFilter').value.trim().toLowerCase();
+  const rows = $('backupRows');
+  rows.innerHTML = '';
+  const shown = backups.filter((b) => !q || [b.showName, b.roomName, b.positionName, b.label, b.submittedBy].join(' ').toLowerCase().includes(q));
+  for (const b of shown) {
+    rows.append(el('tr', {},
+      el('td', { class: 'muted', style: 'white-space:nowrap' }, when(b.savedAt)),
+      el('td', {}, el('strong', {}, placeOf(b))),
+      el('td', {}, b.label || ''),
+      el('td', {}, String(b.keysUsed)),
+      el('td', { style: 'white-space:nowrap;text-align:right' },
+        el('button', { onclick: () => openBackup(b.id) }, 'View'), ' ',
+        el('a', { class: 'btn', style: 'text-decoration:none', href: `/api/backups/${b.id}/download` }, 'Download'))));
+  }
+  if (!shown.length) rows.append(el('tr', {}, el('td', { colspan: 5, class: 'muted' }, backups.length ? 'No backups match.' : 'No backups yet.')));
+}
+$('backupFilter').addEventListener('input', renderBackups);
 $('vClose').onclick = () => $('viewer').close();
 $('vPrint').onclick = () => window.print();
 $('vProgrammed').onclick = async () => { await api('positions/' + viewing.id, { method: 'PATCH', body: { status: 'programmed' } }); $('viewer').close(); refresh(); };
