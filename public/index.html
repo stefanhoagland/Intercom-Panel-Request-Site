@@ -27,7 +27,8 @@
   <!-- Position list -->
   <section id="list" class="hidden">
     <div class="card">
-      <h2>Pick your intercom position</h2>
+      <div id="crumbs" class="crumbs hidden"></div>
+      <h2 id="listTitle">Pick your show</h2>
       <div id="positions" class="positions"></div>
     </div>
     <div class="card hidden" id="photosCard">
@@ -39,8 +40,11 @@
   <!-- Editor -->
   <section id="editor" class="hidden">
     <div class="row" style="margin-bottom:12px">
-      <button id="back">← All positions</button>
-      <h2 id="posName" style="margin:0;flex:1"></h2>
+      <button id="back">← Positions</button>
+      <div style="flex:1">
+        <div id="posPath" class="muted"></div>
+        <h2 id="posName" style="margin:0"></h2>
+      </div>
       <span id="posStatus"></span>
     </div>
     <div class="editor-grid">

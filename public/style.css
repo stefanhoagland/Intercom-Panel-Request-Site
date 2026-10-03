@@ -73,3 +73,14 @@ dialog::backdrop { background: rgba(0,0,0,.5); }
 .keylist { font-size: 13px; columns: 2; column-gap: 24px; }
 @media (max-width: 700px) { .keylist { columns: 1; } }
 .keylist div { break-inside: avoid; padding: 2px 0; }
+.crumbs { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.crumbs a { color: var(--accent); text-decoration: none; }
+details.show { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 10px; }
+details.show > summary { padding: 12px 14px; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.show-body { padding: 0 14px 14px; }
+.room { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+h3 { font-size: 15px; }
+details.show > summary { list-style: none; }
+details.show > summary::-webkit-details-marker { display: none; }
+details.show > summary::before { content: "▸"; color: var(--muted); margin-right: 6px; }
+details.show[open] > summary::before { content: "▾"; }

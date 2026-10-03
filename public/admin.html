@@ -35,16 +35,14 @@
 
     <div class="card">
       <div class="row" style="margin-bottom:8px">
-        <h2 style="margin:0;flex:1">Positions</h2>
-        <form id="addForm" class="row">
-          <input id="newName" type="text" placeholder="New position name" style="width:200px">
-          <button class="primary">Add</button>
+        <h2 style="margin:0;flex:1">Shows</h2>
+        <form id="addShow" class="row">
+          <input id="newShow" type="text" placeholder="New show or event name" style="width:220px">
+          <button class="primary">Add show</button>
         </form>
       </div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Position</th><th>Status</th><th>Keys</th><th>Submitted</th><th></th></tr></thead>
-        <tbody id="posRows"></tbody>
-      </table></div>
+      <p class="muted" style="margin-top:0">Operators pick a show, then a control room, then their position. Newest shows are listed first.</p>
+      <div id="shows"></div>
     </div>
 
     <div class="card">

@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 let pollTimer = null, lastUnread = null, viewing = null;
+const openShows = new Set(); // shows expanded in the list, kept across re-renders
 
 function show(section) {
   $('login').classList.toggle('hidden', section !== 'login');
@@ -14,7 +15,7 @@ async function start() {
   refresh();
   loadPhotos();
   clearInterval(pollTimer);
-  pollTimer = setInterval(refresh, 15000);
+  pollTimer = setInterval(() => refresh(false), 15000);
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 }
 
@@ -28,14 +29,16 @@ $('loginForm').onsubmit = async (e) => {
 };
 $('logout').onclick = async () => { await api('logout', { method: 'POST' }); clearInterval(pollTimer); show('login'); };
 
-async function refresh() {
-  const [notifs, positions] = await Promise.all([api('notifications'), api('positions')]);
+// Polls notifications; the show tree only re-renders when something changed, so typing isn't interrupted.
+async function refresh(force = true) {
+  const notifs = await api('notifications');
   const unread = notifs.filter((n) => !n.read);
+  if (force || unread.length !== lastUnread) renderTree(await api('tree'));
 
   // Alert when a new submission arrives while the page is open.
   if (lastUnread !== null && unread.length > lastUnread && 'Notification' in window && Notification.permission === 'granted') {
     const n = unread[0];
-    new Notification('Panel ready to program', { body: `${n.positionName}${n.submittedBy ? ' from ' + n.submittedBy : ''}` });
+    new Notification('Panel ready to program', { body: `${placeOf(n)}${n.submittedBy ? ' from ' + n.submittedBy : ''}` });
   }
   lastUnread = unread.length;
   document.title = (unread.length ? `(${unread.length}) ` : '') + 'Intercom Admin';
@@ -46,50 +49,93 @@ async function refresh() {
   list.innerHTML = '';
   for (const n of notifs.slice(0, 30)) {
     list.append(el('div', { class: 'notif' + (n.read ? '' : ' unread') },
-      el('div', {}, el('strong', {}, n.positionName), ' is ready to program',
+      el('div', {}, el('strong', {}, placeOf(n)), ' is ready to program',
         n.submittedBy ? ` (submitted by ${n.submittedBy})` : '', el('div', { class: 'muted' }, when(n.at))),
       el('button', { onclick: () => openViewer(n.positionId) }, 'View panel')));
   }
   if (!notifs.length) list.append(el('p', { class: 'muted' }, 'Nothing yet. You will see a notice here when someone submits a panel.'));
 
-  const rows = $('posRows');
-  rows.innerHTML = '';
-  for (const p of positions) {
-    rows.append(el('tr', {},
-      el('td', {}, el('strong', {}, p.name)),
-      el('td', {}, badge(p.status)),
-      el('td', {}, `${p.keysUsed} / ${p.keysTotal}`),
-      el('td', { class: 'muted' }, p.submittedAt ? `${when(p.submittedAt)}${p.submittedBy ? ' · ' + p.submittedBy : ''}` : ''),
-      el('td', { style: 'white-space:nowrap;text-align:right' },
-        el('button', { onclick: () => openViewer(p.id) }, 'View'), ' ',
-        el('button', { onclick: () => rename(p) }, 'Rename'), ' ',
-        el('button', { class: 'danger', onclick: () => remove(p) }, 'Delete'))));
-  }
 }
 
 $('markRead').onclick = async () => { await api('notifications/read', { method: 'POST' }); refresh(); };
 
-$('addForm').onsubmit = async (e) => {
-  e.preventDefault();
-  const name = $('newName').value.trim();
-  if (!name) return;
-  await api('positions', { method: 'POST', body: { name } });
-  $('newName').value = '';
-  refresh();
-};
-async function rename(p) {
-  const name = prompt('Rename position', p.name);
-  if (name && name.trim()) { await api('positions/' + p.id, { method: 'PATCH', body: { name } }); refresh(); }
+function placeOf(n) { return [n.showName, n.roomName, n.positionName].filter(Boolean).join(' › '); }
+
+function inlineAdd(placeholder, onAdd) {
+  const input = el('input', { type: 'text', placeholder, style: 'width:200px' });
+  return el('form', { class: 'row', onsubmit: async (e) => {
+    e.preventDefault();
+    if (!input.value.trim()) return;
+    await onAdd(input.value.trim());
+    refresh();
+  } }, input, el('button', {}, 'Add'));
 }
-async function remove(p) {
-  if (!confirm(`Delete ${p.name} and its key choices? This can't be undone.`)) return;
-  await api('positions/' + p.id, { method: 'DELETE' });
+async function renameThing(kind, obj, label) {
+  const name = prompt(`Rename ${label}`, obj.name);
+  if (name && name.trim()) { await api(`${kind}/${obj.id}`, { method: 'PATCH', body: { name } }); refresh(); }
+}
+async function deleteThing(kind, obj, warning) {
+  if (!confirm(`Delete ${obj.name}? ${warning} This can't be undone.`)) return;
+  await api(`${kind}/${obj.id}`, { method: 'DELETE' });
   refresh();
+}
+
+function renderTree(tree) {
+  const box = $('shows');
+  box.innerHTML = '';
+  if (!tree.shows.length) box.append(el('p', { class: 'muted' }, 'No shows yet. Add one above.'));
+  if (tree.shows.length === 1) openShows.add(tree.shows[0].id);
+  for (const show of [...tree.shows].reverse()) {
+    const rooms = tree.rooms.filter((r) => r.showId === show.id);
+    const details = el('details', { class: 'show', open: openShows.has(show.id) });
+    details.addEventListener('toggle', () => { details.open ? openShows.add(show.id) : openShows.delete(show.id); });
+    const ready = tree.positions.filter((p) => rooms.some((r) => r.id === p.roomId) && p.status === 'submitted').length;
+    details.append(el('summary', {},
+      el('strong', {}, show.name),
+      show.active ? null : el('span', { class: 'badge not_started', style: 'margin-left:8px' }, 'Hidden from operators'),
+      ready ? el('span', { class: 'badge submitted', style: 'margin-left:8px' }, `${ready} ready to program`) : null,
+      el('span', { class: 'muted', style: 'margin-left:8px' }, `${rooms.length} control room${rooms.length === 1 ? '' : 's'}`)));
+
+    const body = el('div', { class: 'show-body' });
+    body.append(el('div', { class: 'row', style: 'margin-bottom:12px' },
+      el('button', { onclick: () => renameThing('shows', show, 'show') }, 'Rename show'),
+      el('button', { onclick: async () => { await api('shows/' + show.id, { method: 'PATCH', body: { active: !show.active } }); refresh(); } },
+        show.active ? 'Hide from operators' : 'Show to operators'),
+      el('button', { onclick: async () => {
+        const name = prompt('Name for the new show (control rooms and positions are copied, keys start blank)', show.name + ' (copy)');
+        if (name && name.trim()) { const c = await api(`shows/${show.id}/copy`, { method: 'POST', body: { name } }); openShows.add(c.id); refresh(); }
+      } }, 'Copy to new show'),
+      el('button', { class: 'danger', onclick: () => deleteThing('shows', show, 'All its control rooms, positions and key choices are deleted too.') }, 'Delete show')));
+
+    for (const room of rooms) {
+      const positions = tree.positions.filter((p) => p.roomId === room.id);
+      body.append(el('div', { class: 'room' },
+        el('div', { class: 'row' },
+          el('h3', { style: 'margin:0;flex:1' }, room.name),
+          el('button', { onclick: () => renameThing('rooms', room, 'control room') }, 'Rename'),
+          el('button', { class: 'danger', onclick: () => deleteThing('rooms', room, 'Its positions and key choices are deleted too.') }, 'Delete')),
+        el('div', { class: 'table-wrap' }, el('table', {},
+          el('thead', {}, el('tr', {}, ...['Position', 'Status', 'Keys', 'Submitted', ''].map((h) => el('th', {}, h)))),
+          el('tbody', {}, positions.map((p) => el('tr', {},
+            el('td', {}, el('strong', {}, p.name)),
+            el('td', {}, badge(p.status)),
+            el('td', {}, `${p.keysUsed} / ${p.keysTotal}`),
+            el('td', { class: 'muted' }, p.submittedAt ? `${when(p.submittedAt)}${p.submittedBy ? ' · ' + p.submittedBy : ''}` : ''),
+            el('td', { style: 'white-space:nowrap;text-align:right' },
+              el('button', { onclick: () => openViewer(p.id) }, 'View'), ' ',
+              el('button', { onclick: () => renameThing('positions', p, 'position') }, 'Rename'), ' ',
+              el('button', { class: 'danger', onclick: () => deleteThing('positions', p, 'Its key choices are deleted too.') }, 'Delete'))))))),
+        el('div', { style: 'margin-top:8px' }, inlineAdd('New position name', (name) => api('positions', { method: 'POST', body: { roomId: room.id, name } })))));
+    }
+    body.append(el('div', { style: 'margin-top:12px' }, inlineAdd('New control room name', (name) => api('rooms', { method: 'POST', body: { showId: show.id, name } }))));
+    details.append(body);
+    box.append(details);
+  }
 }
 
 async function openViewer(id) {
   viewing = await api('positions/' + id);
-  $('vTitle').textContent = viewing.name;
+  $('vTitle').textContent = placeOf({ showName: viewing.showName, roomName: viewing.roomName, positionName: viewing.name });
   $('vMeta').replaceChildren(badge(viewing.status),
     viewing.submittedBy ? `  Submitted by ${viewing.submittedBy} on ${when(viewing.submittedAt)}` : '',
     viewing.notes ? el('div', { style: 'margin-top:6px;color:var(--text)' }, 'Notes: ' + viewing.notes) : '');
@@ -129,3 +175,13 @@ $('photoForm').onsubmit = async (e) => {
 };
 
 start();
+
+$('addShow').onsubmit = async (e) => {
+  e.preventDefault();
+  const name = $('newShow').value.trim();
+  if (!name) return;
+  const created = await api('shows', { method: 'POST', body: { name } });
+  openShows.add(created.id);
+  $('newShow').value = '';
+  refresh();
+};
