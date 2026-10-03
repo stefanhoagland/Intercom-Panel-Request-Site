@@ -1,0 +1,9 @@
+{
+  "name": "intercom-panel-requests",
+  "version": "1.0.0",
+  "description": "Let operators choose the keys for their RTS KP-4016 + KP-5032 intercom position and notify the admin when ready to program.",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED"
+}

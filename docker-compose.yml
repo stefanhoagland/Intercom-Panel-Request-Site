@@ -1,0 +1,14 @@
+services:
+  intercom-panels:
+    image: ghcr.io/stefanhoagland/intercom-panel-request-site:latest
+    # To build from this folder instead, replace the line above with: build: .
+    container_name: intercom-panels
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      USER_PASSWORD: change-me
+      ADMIN_PASSWORD: change-me-too
+      TZ: America/Los_Angeles
+    volumes:
+      - /mnt/user/appdata/intercom-panels:/data

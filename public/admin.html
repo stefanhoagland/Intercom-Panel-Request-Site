@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intercom Admin</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <h1>Intercom Admin</h1>
+  <a href="/" class="btn" style="text-decoration:none">Operator view</a>
+  <button id="logout" class="hidden">Log out</button>
+</header>
+
+<main>
+  <section id="login" class="card login hidden">
+    <h2>Admin log in</h2>
+    <form id="loginForm">
+      <label for="pw">Admin password</label>
+      <input id="pw" type="password" autocomplete="current-password" autofocus>
+      <div class="error" id="loginError"></div>
+      <button class="primary" style="width:100%;margin-top:8px">Log in</button>
+    </form>
+  </section>
+
+  <section id="dash" class="hidden">
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0;flex:1">Notifications <span id="unread" class="count hidden"></span></h2>
+        <button id="markRead">Mark all read</button>
+      </div>
+      <div id="notifs"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0;flex:1">Positions</h2>
+        <form id="addForm" class="row">
+          <input id="newName" type="text" placeholder="New position name" style="width:200px">
+          <button class="primary">Add</button>
+        </form>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Position</th><th>Status</th><th>Keys</th><th>Submitted</th><th></th></tr></thead>
+        <tbody id="posRows"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0;flex:1">Reference photos</h2>
+        <form id="photoForm" class="row">
+          <input id="photoCaption" type="text" placeholder="Caption (optional)" style="width:200px">
+          <input id="photoFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+          <button class="primary">Upload</button>
+        </form>
+      </div>
+      <p class="muted" style="margin-top:0">Operators see these on the position picker and while filling out their panel.</p>
+      <div class="photos" id="photos"></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="viewer">
+  <div class="row" style="margin-bottom:10px">
+    <h2 id="vTitle" style="margin:0;flex:1"></h2>
+    <button id="vPrint">Print</button>
+    <button id="vClose">Close</button>
+  </div>
+  <div id="vMeta" class="muted" style="margin-bottom:10px"></div>
+  <div id="vRack"></div>
+  <h2 style="margin-top:16px">Key list</h2>
+  <div id="vList" class="keylist"></div>
+  <div class="row" style="margin-top:16px">
+    <button id="vProgrammed" class="primary">Mark programmed</button>
+    <button id="vReopen">Reopen for changes</button>
+  </div>
+</dialog>
+
+<script src="/common.js"></script>
+<script src="/admin.js"></script>
+</body>
+</html>
