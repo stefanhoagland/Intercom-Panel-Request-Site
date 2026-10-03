@@ -1,0 +1,16 @@
+Control room,Position,Alpha,Port,Include
+Control Room 1,PFB 1,PALA P1,049,yes
+Control Room 1,PFB 2,PIT P1,113,yes
+Control Room 1,PFB 3 PROD,PROD P1,177,yes
+Control Room 1,PFB 4 DIR,DIR P1,241,yes
+Control Room 1,PFB 5 TD,TD P1,305,yes
+Control Room 1,PMB 1,PMB1 P1,061,yes
+Control Room 1,PMB 2,FRNK P1,114,yes
+Control Room 1,PMB 3,PMB3 P1,242,yes
+Control Room 1,PMB 4 AD,AD P1,050,yes
+Control Room 1,PMB 5 TM,TM P1,178,yes
+Control Room 1,PRB 1,SMT1 P1,051,yes
+Control Room 1,PRB 2,SMT2 P1,115,yes
+Control Room 1,PRB 3,SMT3 P1,179,yes
+Control Room 1,PRB 4 - FOX GFX,GFXP P1,243,yes
+Control Room 1,PRB 5 - FOX GFX,GFXO P1,307,yes

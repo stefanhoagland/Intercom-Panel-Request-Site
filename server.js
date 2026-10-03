@@ -77,6 +77,30 @@ function saveDb() {
   fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
   fs.renameSync(tmp, DB_FILE);
 }
+// Position lists shipped in seed/*.csv (Control room, Position, Alpha, Port, Include) are added once
+// to the oldest show. Each file is applied a single time, so later edits or deletes stick.
+function applySeeds() {
+  const dir = path.join(__dirname, 'seed');
+  if (!fs.existsSync(dir)) return;
+  db.appliedSeeds ||= [];
+  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.csv')).sort()) {
+    if (db.appliedSeeds.includes(file)) continue;
+    const show = db.shows[0] || newShow(db, 'My Show');
+    const lines = fs.readFileSync(path.join(dir, file), 'utf8').split(/\r?\n/).filter((l) => l.trim());
+    if (/control room/i.test(lines[0] || '')) lines.shift();
+    let added = 0;
+    for (const line of lines) {
+      const [roomName, name, alpha, port, include = 'yes'] = line.split(',').map((v) => v.trim());
+      if (!roomName || !name || /^(no|n|false|0)$/i.test(include)) continue;
+      const room = db.rooms.find((r) => r.showId === show.id && r.name.toLowerCase() === roomName.toLowerCase()) || newRoom(db, show.id, roomName);
+      db.positions.push(newPosition(db, room.id, name, { alpha, port }));
+      added++;
+    }
+    db.appliedSeeds.push(file);
+    console.log(`Added ${added} positions from seed/${file} to "${show.name}"`);
+  }
+}
+applySeeds();
 saveDb();
 
 // ---------- sessions (signed cookie) ----------
