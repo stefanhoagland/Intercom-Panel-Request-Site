@@ -215,7 +215,8 @@ async function handleApi(req, res, url) {
   // Everything an operator or admin needs to navigate: shows, rooms, position summaries.
   // Operators only see shows marked active.
   if (parts[0] === 'tree' && m === 'GET') {
-    const shows = isAdmin ? db.shows : db.shows.filter((s) => s.active);
+    // The operator page never lists hidden shows, even when the admin is the one looking at it.
+    const shows = isAdmin && url.searchParams.get('all') === '1' ? db.shows : db.shows.filter((s) => s.active);
     const showIds = new Set(shows.map((s) => s.id));
     const rooms = db.rooms.filter((r) => showIds.has(r.showId));
     const roomIds = new Set(rooms.map((r) => r.id));

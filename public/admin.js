@@ -34,7 +34,7 @@ $('logout').onclick = async () => { await api('logout', { method: 'POST' }); cle
 async function refresh(force = true) {
   const notifs = await api('notifications');
   const unread = notifs.filter((n) => !n.read);
-  if (force || unread.length !== lastUnread) renderTree(await api('tree'));
+  if (force || unread.length !== lastUnread) renderTree(await api('tree?all=1'));
 
   // Alert when a new submission arrives while the page is open.
   if (lastUnread !== null && unread.length > lastUnread && 'Notification' in window && Notification.permission === 'granted') {
@@ -149,7 +149,7 @@ async function openViewer(id) {
 
 // A backup opens in the same viewer, with restore/download/delete instead of status buttons.
 async function openBackup(id) {
-  const [b, tree] = await Promise.all([api('backups/' + id), api('tree')]);
+  const [b, tree] = await Promise.all([api('backups/' + id), api('tree?all=1')]);
   viewing = { backup: b };
   $('vTitle').textContent = 'Backup: ' + placeOf(b);
   $('vMeta').replaceChildren(`Saved ${when(b.savedAt)}`, b.label ? ` · ${b.label}` : '',

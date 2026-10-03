@@ -50,9 +50,14 @@ async function loadPhotos(cardId, gridId) {
   renderPhotos($(gridId), photos);
 }
 
+let listAt = { showId: null, roomId: null };
 async function showList(showId, roomId) {
   current = null;
   if (!tree) tree = await api('tree');
+  // A show or room can disappear (hidden or deleted by the admin): fall back to the level above.
+  if (roomId && !tree.rooms.some((r) => r.id === roomId)) roomId = null;
+  if (showId && !tree.shows.some((s) => s.id === showId)) showId = null;
+  listAt = { showId, roomId };
   go(roomId ? `room/${roomId}` : showId ? `show/${showId}` : '');
   const showObj = tree.shows.find((s) => s.id === showId);
   const roomObj = tree.rooms.find((r) => r.id === roomId);
@@ -94,6 +99,25 @@ async function showList(showId, roomId) {
   loadPhotos('photosCard', 'photos');
 }
 async function refreshList(showId, roomId) { tree = await api('tree'); showList(showId, roomId); }
+
+// Keep the operator view in step with admin changes (shows hidden or added, rooms, positions, status).
+setInterval(async () => {
+  if (document.hidden) return;
+  try {
+    if (!$('list').classList.contains('hidden')) {
+      const fresh = await api('tree');
+      if (JSON.stringify(fresh) !== JSON.stringify(tree)) { tree = fresh; showList(listAt.showId, listAt.roomId); }
+    } else if (current && !$('editor').classList.contains('hidden')) {
+      const fresh = await api('tree');
+      tree = fresh;
+      if (!fresh.positions.some((p) => p.id === current.id)) {
+        if (saveTimer) await save();
+        alert('This show is no longer available. Pick another show.');
+        showList();
+      }
+    }
+  } catch { /* logged out or offline: try again next tick */ }
+}, 5000);
 
 async function openPosition(id) {
   current = await api('positions/' + id);
