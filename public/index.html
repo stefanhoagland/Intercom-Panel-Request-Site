@@ -50,7 +50,11 @@
     <div class="editor-grid">
       <div>
         <div class="card">
-          <p class="muted" style="margin-top:0">Click a key to set what it should say and do</p>
+          <div class="row" style="margin-bottom:12px">
+            <p class="muted" style="margin:0;flex:1">Click a key to set what it should say and do</p>
+            <span id="undoBar" class="hidden muted">All keys cleared. <button id="undoClear">Undo</button></span>
+            <button id="clearAll" class="danger">Clear whole panel</button>
+          </div>
           <div id="rack"></div>
         </div>
       </div>

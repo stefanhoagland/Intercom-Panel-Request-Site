@@ -104,6 +104,8 @@ async function openPosition(id) {
   $('contact').value = current.contact || '';
   $('notes').value = current.notes || '';
   $('saveState').innerHTML = '&nbsp;';
+  beforeClear = null;
+  $('undoBar').classList.add('hidden');
   $('submitError').textContent = '';
   refreshStatus();
   draw();
@@ -117,7 +119,7 @@ function refreshStatus() {
   const locked = current.status === 'programmed';
   $('submit').disabled = locked;
   $('submit').textContent = current.status === 'submitted' ? 'Submitted. Submit again after changes' : 'Submit, ready to program';
-  for (const id of ['kLabel', 'contact', 'notes', 'clearKey']) $(id).disabled = locked;
+  for (const id of ['kLabel', 'contact', 'notes', 'clearKey', 'clearAll']) $(id).disabled = locked;
   if (locked) $('saveState').textContent = 'This panel has been programmed. Ask Stefan to reopen it for changes.';
 }
 
@@ -146,6 +148,7 @@ $('kLabel').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.prev
 
 function onKeyEdit() {
   selKey().label = $('kLabel').value.toUpperCase().slice(0, config.labelMax);
+  beforeClear = null; $('undoBar').classList.add('hidden');
   $('kLabel').value = selKey().label;
   draw();
   queueSave();
@@ -153,6 +156,22 @@ function onKeyEdit() {
 $('kLabel').addEventListener('input', onKeyEdit);
 for (const id of ['contact', 'notes']) $(id).addEventListener('input', queueSave);
 $('clearKey').onclick = () => { selKey().label = ''; loadKeyForm(); draw(); queueSave(); };
+
+// Clears every key on both panels at once; Undo puts them back until the operator leaves the page.
+let beforeClear = null;
+$('clearAll').onclick = () => {
+  beforeClear = JSON.parse(JSON.stringify(current.keys));
+  for (const list of Object.values(current.keys)) list.forEach((k) => { k.label = ''; });
+  $('undoBar').classList.remove('hidden');
+  loadKeyForm(); draw(); queueSave();
+};
+$('undoClear').onclick = () => {
+  if (!beforeClear) return;
+  current.keys = beforeClear;
+  beforeClear = null;
+  $('undoBar').classList.add('hidden');
+  loadKeyForm(); draw(); queueSave();
+};
 
 function queueSave() {
   $('saveState').textContent = 'Saving…';
