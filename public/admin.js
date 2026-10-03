@@ -121,7 +121,7 @@ function renderTree(tree) {
           el('h3', { style: 'margin:0;flex:1' }, room.name),
           el('button', { onclick: () => renameThing('rooms', room, 'control room') }, 'Rename'),
           el('button', { class: 'danger', onclick: () => deleteThing('rooms', room, 'Its positions and key choices are deleted too.') }, 'Delete')),
-        el('div', { class: 'table-wrap' }, el('table', {},
+        el('div', { class: 'table-wrap' }, el('table', { class: 'stack' },
           el('thead', {}, el('tr', {}, ...['Position', 'Status', 'Keys', 'Submitted', ''].map((h) => el('th', {}, h)))),
           el('tbody', {}, positions.map((p) => el('tr', {},
             el('td', {}, el('strong', {}, p.name), p.alpha || p.port ? el('div', { class: 'muted' }, [p.alpha, p.port && 'port ' + p.port].filter(Boolean).join(' · ')) : null),

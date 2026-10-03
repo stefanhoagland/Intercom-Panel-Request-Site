@@ -83,3 +83,40 @@ details.show[open] > summary::before { content: "▾"; }
 .brands img { height: 56px; width: auto; max-width: 42%; object-fit: contain; }
 @media (max-width: 600px) { .brands { gap: 20px; padding: 14px; } .brands img { height: 34px; } }
 @media print { :root { color-scheme: light; --bg: #fff; --card: #fff; --text: #000; --muted: #444; --line: #ccc; } }
+
+/* Phones */
+@media (max-width: 700px) {
+  main { padding: 12px; }
+  header { padding: 10px 12px; gap: 8px; }
+  header h1 { font-size: 16px; }
+  header .btn, header button { padding: 6px 10px; font-size: 14px; }
+  .card { padding: 12px; }
+
+  /* Keypanels wrap to 4 keys per line so every key is visible without sideways scrolling */
+  .rack { padding: 8px; overflow: visible; }
+  .rack::before, .rack::after { display: none; }
+  .keyrow { grid-template-columns: repeat(4, 1fr); min-width: 0; gap: 6px; }
+  .keyrow + .keyrow { margin-top: 6px; }
+  .key { padding: 6px 4px; }
+  .key .lcd { font-size: 13px; min-height: 24px; padding: 4px 2px; }
+  .key .num { font-size: 11px; }
+
+  /* Key editor stays pinned to the bottom of the screen while scrolling the panel */
+  #editor { padding-bottom: 150px; }
+  .side > .keyform { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; margin: 0; border-radius: 12px 12px 0 0;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px rgba(0,0,0,.5); }
+  .keyform h2 { font-size: 14px; margin: 0 0 6px; }
+  .keyform label { display: none; }
+  input[type=text], input[type=password], textarea, select { font-size: 16px; }
+  .keyform .row { margin-top: 8px !important; flex-wrap: nowrap; }
+
+  /* Admin tables become one card per row */
+  table.stack thead { display: none; }
+  table.stack tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  table.stack td { border: 0; padding: 0; }
+  table.stack td:first-child { flex: 1 1 100%; }
+  table.stack td:last-child { flex: 1 1 100%; text-align: left !important; white-space: normal !important; }
+  table.stack td:last-child:empty { display: none; }
+  details.show > summary .row, .show-body > .row { flex-wrap: wrap; }
+  #addShow, #addShow input, #backupFilter { width: 100% !important; }
+}
