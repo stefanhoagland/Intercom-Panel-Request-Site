@@ -87,7 +87,7 @@ async function showList(showId, roomId) {
   } else {
     $('listTitle').textContent = 'Pick your position';
     const pos = tree.positions.filter((p) => p.roomId === roomObj.id);
-    for (const p of pos) grid.append(card(p.name, `${p.keysUsed} of ${p.keysTotal} keys set`, () => openPosition(p.id), badge(p.status)));
+    for (const p of pos) grid.append(card(p.name, `${p.alpha ? p.alpha + ' · ' : ''}${p.keysUsed} of ${p.keysTotal} keys set`, () => openPosition(p.id), badge(p.status)));
     if (!pos.length) grid.append(el('p', { class: 'muted' }, 'No positions in this control room yet. Ask Stefan to add yours.'));
   }
   show('list');

@@ -106,6 +106,7 @@ function renderTree(tree) {
         const name = prompt('Name for the new show (control rooms and positions are copied, keys start blank)', show.name + ' (copy)');
         if (name && name.trim()) { const c = await api(`shows/${show.id}/copy`, { method: 'POST', body: { name } }); openShows.add(c.id); refresh(); }
       } }, 'Copy to new show'),
+      el('button', { onclick: () => openImport(show) }, 'Import positions'),
       el('button', { class: 'danger', onclick: () => deleteThing('shows', show, 'All its control rooms, positions and key choices are deleted too.') }, 'Delete show')));
 
     for (const room of rooms) {
@@ -118,7 +119,7 @@ function renderTree(tree) {
         el('div', { class: 'table-wrap' }, el('table', {},
           el('thead', {}, el('tr', {}, ...['Position', 'Status', 'Keys', 'Submitted', ''].map((h) => el('th', {}, h)))),
           el('tbody', {}, positions.map((p) => el('tr', {},
-            el('td', {}, el('strong', {}, p.name)),
+            el('td', {}, el('strong', {}, p.name), p.alpha || p.port ? el('div', { class: 'muted' }, [p.alpha, p.port && 'port ' + p.port].filter(Boolean).join(' · ')) : null),
             el('td', {}, badge(p.status)),
             el('td', {}, `${p.keysUsed} / ${p.keysTotal}`),
             el('td', { class: 'muted' }, p.submittedAt ? `${when(p.submittedAt)}${p.submittedBy ? ' · ' + p.submittedBy : ''}` : ''),
@@ -257,4 +258,71 @@ $('addShow').onsubmit = async (e) => {
   openShows.add(created.id);
   $('newShow').value = '';
   refresh();
+};
+
+// ---------- import positions from a list (e.g. a CSV pulled from the frame's port list) ----------
+let importShow = null;
+function openImport(show) {
+  importShow = show;
+  $('iTitle').textContent = `Import positions into ${show.name}`;
+  $('iFile').value = ''; $('iText').value = ''; $('iError').textContent = '';
+  $('iStep1').classList.remove('hidden'); $('iStep2').classList.add('hidden');
+  $('importDlg').showModal();
+}
+$('iClose').onclick = () => $('importDlg').close();
+$('iBack').onclick = () => { $('iStep1').classList.remove('hidden'); $('iStep2').classList.add('hidden'); };
+$('iFile').onchange = async () => { const f = $('iFile').files[0]; if (f) $('iText').value = await f.text(); };
+
+function parseLine(line) {
+  const sep = line.includes('\t') ? '\t' : ',';
+  const out = []; let cur = '', quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quoted) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') quoted = false; else cur += c; }
+    else if (c === '"') quoted = true;
+    else if (c === sep) { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out.map((v) => v.trim());
+}
+$('iPreview').onclick = () => {
+  const lines = $('iText').value.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length && /control room/i.test(lines[0])) lines.shift();
+  const rows = lines.map(parseLine).filter((r) => r[0] && r[1]);
+  if (!rows.length) { $('iError').textContent = 'No rows found. Each line needs at least a control room and a position name.'; return; }
+  const body = $('iRows');
+  body.innerHTML = '';
+  for (const [room, name, alpha = '', port = '', include = 'yes'] of rows) {
+    body.append(el('tr', {},
+      el('td', {}, el('input', { type: 'checkbox', checked: !/^(no|n|false|0)$/i.test(include), onchange: countImport })),
+      el('td', {}, el('input', { type: 'text', value: room, style: 'min-width:90px' })),
+      el('td', {}, el('input', { type: 'text', value: name, style: 'min-width:200px' })),
+      el('td', {}, el('input', { type: 'text', value: alpha, maxlength: 8, style: 'width:100px' })),
+      el('td', {}, el('input', { type: 'text', value: port, style: 'width:70px' }))));
+  }
+  $('iStep1').classList.add('hidden'); $('iStep2').classList.remove('hidden');
+  countImport();
+};
+function importRows() {
+  return [...$('iRows').children].map((tr) => {
+    const [check, room, name, alpha, port] = tr.querySelectorAll('input');
+    return { on: check.checked, room: room.value.trim(), name: name.value.trim(), alpha: alpha.value.trim(), port: port.value.trim() };
+  });
+}
+function countImport() {
+  const n = importRows().filter((r) => r.on && r.room && r.name).length;
+  $('iCount').textContent = `${n} selected`;
+  $('iGo').textContent = `Add ${n} position${n === 1 ? '' : 's'}`;
+  $('iGo').disabled = !n;
+}
+$('iAll').onclick = () => { $('iRows').querySelectorAll('input[type=checkbox]').forEach((c) => { c.checked = true; }); countImport(); };
+$('iNone').onclick = () => { $('iRows').querySelectorAll('input[type=checkbox]').forEach((c) => { c.checked = false; }); countImport(); };
+$('iGo').onclick = async () => {
+  const rows = importRows().filter((r) => r.on && r.room && r.name);
+  const { added } = await api(`shows/${importShow.id}/import`, { method: 'POST', body: { rows } });
+  openShows.add(importShow.id);
+  $('importDlg').close();
+  refresh();
+  alert(`Added ${added} positions to ${importShow.name}.`);
 };

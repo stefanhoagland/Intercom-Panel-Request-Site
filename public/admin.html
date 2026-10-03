@@ -97,6 +97,34 @@
   </div>
 </dialog>
 
+<dialog id="importDlg">
+  <div class="row" style="margin-bottom:10px">
+    <h2 id="iTitle" style="margin:0;flex:1">Import positions</h2>
+    <button id="iClose">Close</button>
+  </div>
+  <div id="iStep1">
+    <p class="muted" style="margin-top:0">Pick a CSV file, or paste lines below. Columns: Control room, Position, Alpha, Port, Include (yes/no). Only the first two are required.</p>
+    <input id="iFile" type="file" accept=".csv,text/csv,text/plain">
+    <textarea id="iText" rows="6" style="margin-top:10px" placeholder="PCR 01,PFB 3 PROD,PROD P1,177"></textarea>
+    <div class="row" style="margin-top:10px"><button id="iPreview" class="primary">Review list</button><span id="iError" class="error"></span></div>
+  </div>
+  <div id="iStep2" class="hidden">
+    <p class="muted" style="margin-top:0">Check the rows to add and fix any text. Control rooms that don't exist in this show yet are created.</p>
+    <div class="row" style="margin-bottom:8px">
+      <button id="iAll">Select all</button><button id="iNone">Select none</button>
+      <span id="iCount" class="muted" style="margin-left:auto"></span>
+    </div>
+    <div class="table-wrap" style="max-height:55vh;overflow:auto"><table>
+      <thead><tr><th></th><th>Control room</th><th>Position name</th><th>Alpha</th><th>Port</th></tr></thead>
+      <tbody id="iRows"></tbody>
+    </table></div>
+    <div class="row" style="margin-top:12px">
+      <button id="iBack">← Back</button>
+      <button id="iGo" class="primary" style="margin-left:auto">Add positions</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="/common.js"></script>
 <script src="/admin.js"></script>
 </body>

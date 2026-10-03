@@ -63,9 +63,10 @@ function newRoom(db, showId, name) {
   db.rooms.push(room);
   return room;
 }
-function newPosition(db, roomId, name) {
+// alpha/port are optional: the panel's 8-character name and port number on the intercom frame.
+function newPosition(db, roomId, name, extra = {}) {
   return {
-    id: db.nextId++, roomId, name, status: 'not_started', keys: emptyKeys(),
+    id: db.nextId++, roomId, name, alpha: str(extra.alpha, 8), port: str(extra.port, 8), status: 'not_started', keys: emptyKeys(),
     contact: '', notes: '', updatedAt: null, submittedAt: null, submittedBy: '', programmedAt: null,
   };
 }
@@ -217,10 +218,25 @@ async function handleApi(req, res, url) {
       const copy = newShow(db, name);
       for (const room of db.rooms.filter((r) => r.showId === show.id)) {
         const newR = newRoom(db, copy.id, room.name);
-        for (const pos of db.positions.filter((p) => p.roomId === room.id)) db.positions.push(newPosition(db, newR.id, pos.name));
+        for (const pos of db.positions.filter((p) => p.roomId === room.id)) db.positions.push(newPosition(db, newR.id, pos.name, pos));
       }
       saveDb();
       return send(res, 201, copy);
+    }
+    // Bulk add positions from a reviewed list; control rooms are matched by name or created.
+    if (parts[2] === 'import' && m === 'POST') {
+      const { rows } = await readJson(req);
+      if (!Array.isArray(rows) || !rows.length) return send(res, 400, { error: 'Nothing to import' });
+      let added = 0;
+      for (const row of rows.slice(0, 500)) {
+        const roomName = cleanName(row.room), name = cleanName(row.name);
+        if (!roomName || !name) continue;
+        const room = db.rooms.find((r) => r.showId === show.id && r.name.toLowerCase() === roomName.toLowerCase()) || newRoom(db, show.id, roomName);
+        db.positions.push(newPosition(db, room.id, name, row));
+        added++;
+      }
+      saveDb();
+      return send(res, 201, { added });
     }
     if (m === 'PATCH') {
       const body = await readJson(req);
