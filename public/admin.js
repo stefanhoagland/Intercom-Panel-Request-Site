@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-let pollTimer = null, lastUnread = null, viewing = null;
+let pollTimer = null, lastUnread = null, viewing = null, lastTree = '';
 const openShows = new Set(); // shows expanded in the list, kept across re-renders
 
 function show(section) {
@@ -16,7 +16,7 @@ async function start() {
   loadPhotos();
   loadBackups();
   clearInterval(pollTimer);
-  pollTimer = setInterval(() => refresh(false), 15000);
+  pollTimer = setInterval(() => refresh(false), 5000);
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 }
 
@@ -31,10 +31,15 @@ $('loginForm').onsubmit = async (e) => {
 $('logout').onclick = async () => { await api('logout', { method: 'POST' }); clearInterval(pollTimer); show('login'); };
 
 // Polls notifications; the show tree only re-renders when something changed, so typing isn't interrupted.
+// Polls every few seconds so operator edits and submissions show up without reloading.
+// The show list is left alone while you're typing in one of its boxes.
 async function refresh(force = true) {
-  const notifs = await api('notifications');
+  const [notifs, tree] = await Promise.all([api('notifications'), api('tree?all=1')]);
   const unread = notifs.filter((n) => !n.read);
-  if (force || unread.length !== lastUnread) renderTree(await api('tree?all=1'));
+  const treeJson = JSON.stringify(tree);
+  const typing = $('shows').contains(document.activeElement) || [...$('shows').querySelectorAll('input')].some((i) => i.value);
+  if (force || (treeJson !== lastTree && !typing)) { renderTree(tree); lastTree = treeJson; }
+  if (!force) refreshViewer();
 
   // Alert when a new submission arrives while the page is open.
   if (lastUnread !== null && unread.length > lastUnread && 'Notification' in window && Notification.permission === 'granted') {
@@ -122,7 +127,7 @@ function renderTree(tree) {
             el('td', {}, el('strong', {}, p.name), p.alpha || p.port ? el('div', { class: 'muted' }, [p.alpha, p.port && 'port ' + p.port].filter(Boolean).join(' · ')) : null),
             el('td', {}, badge(p.status)),
             el('td', {}, `${p.keysUsed} / ${p.keysTotal}`),
-            el('td', { class: 'muted' }, p.submittedAt ? `${when(p.submittedAt)}${p.submittedBy ? ' · ' + p.submittedBy : ''}` : ''),
+            el('td', { class: 'muted' }, p.submittedAt ? `${when(p.submittedAt)}${p.submittedBy ? ' · ' + p.submittedBy : ''}` : p.updatedAt ? `Edited ${when(p.updatedAt)}` : ''),
             el('td', { style: 'white-space:nowrap;text-align:right' },
               el('button', { onclick: () => openViewer(p.id) }, 'View'), ' ',
               el('button', { onclick: () => editPosition(p) }, 'Edit'), ' ',
@@ -137,13 +142,24 @@ function renderTree(tree) {
 
 async function openViewer(id) {
   viewing = await api('positions/' + id);
+  $('vBackupMsg').textContent = '';
+  renderPositionViewer();
+}
+// Re-draws an open panel when the operator changes it.
+async function refreshViewer() {
+  if (!$('viewer').open || !viewing || viewing.backup) return;
+  try {
+    const fresh = await api('positions/' + viewing.id);
+    if (JSON.stringify(fresh) !== JSON.stringify(viewing)) { viewing = fresh; renderPositionViewer(); }
+  } catch { /* deleted: leave the last view up */ }
+}
+function renderPositionViewer() {
   $('vTitle').textContent = placeOf({ showName: viewing.showName, roomName: viewing.roomName, positionName: viewing.name });
   $('vMeta').replaceChildren(badge(viewing.status),
     viewing.submittedBy ? `  Submitted by ${viewing.submittedBy} on ${when(viewing.submittedAt)}` : '',
     viewing.notes ? el('div', { style: 'margin-top:6px;color:var(--text)' }, 'Notes: ' + viewing.notes) : '');
   $('vPosActions').classList.remove('hidden');
   $('vBackupActions').classList.add('hidden');
-  $('vBackupMsg').textContent = '';
   fillViewer(viewing.keys);
 }
 
