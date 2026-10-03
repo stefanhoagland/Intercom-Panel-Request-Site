@@ -4,6 +4,7 @@ let config, tree, current, rendered = null, selected = { panel: 'kp4016', index:
 function show(section) {
   for (const s of ['login', 'list', 'editor']) $(s).classList.toggle('hidden', s !== section);
   $('logout').classList.toggle('hidden', section === 'login');
+  $('brands').classList.toggle('hidden', section === 'editor');
 }
 
 async function start() {
