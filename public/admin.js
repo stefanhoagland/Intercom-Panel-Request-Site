@@ -15,6 +15,7 @@ async function start() {
   refresh();
   loadPhotos();
   loadBackups();
+  loadAzNames();
   clearInterval(pollTimer);
   pollTimer = setInterval(() => refresh(false), 5000);
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
@@ -358,5 +359,89 @@ $('editForm').onsubmit = async (e) => {
   if (!$('eName').value.trim()) { $('eError').textContent = 'Name is required.'; return; }
   await api('positions/' + editing.id, { method: 'PATCH', body: { name: $('eName').value, alpha: $('eAlpha').value, port: $('ePort').value } });
   $('editDlg').close();
+  refresh();
+};
+
+// ---------- AZedit names list and panel import ----------
+let azNames = {};
+const AZ_TYPE_CODES = { port: 'port', in: 'in', input: 'in', pl: 'pl', 'party line': 'pl', ifb: 'ifb', sl: 'sl', 'special list': 'sl' };
+async function loadAzNames() {
+  azNames = await api('alphas');
+  const counts = {};
+  for (const k of Object.keys(azNames)) { const t = k.split(':')[0]; counts[t] = (counts[t] || 0) + 1; }
+  const parts = Object.entries(counts).map(([t, n]) => `${n} ${t === 'port' ? 'ports' : t === 'in' ? 'port inputs' : t.toUpperCase() + (n === 1 ? '' : 's')}`);
+  $('azNamesCount').textContent = parts.length ? 'Loaded: ' + parts.join(', ') + '.' : 'No names loaded yet.';
+}
+$('azNamesUpload').onclick = () => { $('azNamesFile').value = ''; $('azNamesFile').click(); };
+$('azNamesFile').onchange = async () => {
+  const f = $('azNamesFile').files[0];
+  if (!f) return;
+  const alphas = {};
+  let bad = 0;
+  for (const line of (await f.text()).split(/\r?\n/)) {
+    if (!line.trim() || /^type\s*,/i.test(line)) continue;
+    const [type, num, name] = parseLine(line);
+    const t = AZ_TYPE_CODES[(type || '').toLowerCase()] || (/^t\d+$/i.test(type) ? type.toLowerCase() : null);
+    const n = parseInt(num, 10);
+    if (!t || !(n >= 0) || !name) { bad++; continue; }
+    alphas[`${t}:${n}`] = name;
+  }
+  if (!Object.keys(alphas).length) return alert('No names found. Each line needs Type, Number and Name.');
+  const replace = confirm(`Found ${Object.keys(alphas).length} names${bad ? ` (${bad} lines skipped)` : ''}.\n\nOK replaces the current list. Cancel adds these to it.`);
+  const { count } = await api('alphas', { method: 'PUT', body: { alphas: replace ? alphas : { ...azNames, ...alphas } } });
+  await loadAzNames();
+  alert(`Names list now has ${count} entries.`);
+};
+$('azNamesDownload').onclick = () => {
+  const label = { port: 'Port', in: 'IN', pl: 'PL', ifb: 'IFB', sl: 'SL' };
+  const rows = Object.entries(azNames).map(([k, v]) => { const [t, n] = k.split(':'); return [label[t] || t.toUpperCase(), n, v]; })
+    .sort((a, b) => a[0].localeCompare(b[0]) || a[1] - b[1]);
+  const csv = ['Type,Number,Name', ...rows.map((r) => r.map((v) => /[",]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v).join(','))].join('\n');
+  const a = el('a', { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'azedit-names.csv' });
+  a.click();
+};
+
+// AZedit keys 33-48 sit on the EKP-4016, 17-32 on the KP-5032 upper row, 1-16 on its lower row.
+const AZ_MAP = [['kp5032', 16], ['kp5032', 0], ['kp4016', 0]];
+let azImport = null;
+$('vAzedit').onclick = () => { $('vAzFile').value = ''; $('vAzFile').click(); };
+$('vAzFile').onchange = async () => {
+  const f = $('vAzFile').files[0];
+  if (!f) return;
+  let pages;
+  try { pages = parseAzeditFile(await f.arrayBuffer()); } catch (err) { return alert(err.message); }
+  // Ports named in the show list fill gaps in the names list.
+  const names = { ...azNames };
+  for (const p of JSON.parse(lastTree || '{}').positions || []) if (p.port && p.alpha && !names['port:' + Number(p.port)]) names['port:' + Number(p.port)] = p.alpha;
+  const body = $('azRows');
+  body.innerHTML = '';
+  let missing = 0;
+  azImport = { position: viewing, rows: [] };
+  pages.forEach((keys, page) => keys.forEach((key, i) => {
+    const [panel, offset] = AZ_MAP[page];
+    const index = offset + i;
+    const { label, what, found } = azLabel(key, names);
+    if (!found) missing++;
+    const input = el('input', { type: 'text', value: label.slice(0, 8), maxlength: 8, style: 'width:110px' + (found ? '' : ';border-color:var(--warn)') });
+    azImport.rows.push({ panel, index, input });
+    body.append(el('tr', {},
+      el('td', {}, `${panel === 'kp4016' ? 'KP-4016' : 'KP-5032'} ${index + 1}`),
+      el('td', { class: 'muted' }, String(page * 16 + i + 1)),
+      el('td', { class: 'muted' }, what || 'Empty'),
+      el('td', {}, input)));
+  }));
+  azImport.rows.sort((a, b) => (a.panel === b.panel ? a.index - b.index : a.panel === 'kp4016' ? -1 : 1));
+  $('azTitle').textContent = `Import ${f.name} into ${viewing.name}`;
+  $('azMissing').textContent = missing ? `${missing} key${missing === 1 ? ' has' : 's have'} no name in the AZedit names list (outlined).` : 'Every key has a name.';
+  $('azDlg').showModal();
+};
+$('azClose').onclick = () => $('azDlg').close();
+$('azApply').onclick = async () => {
+  const pos = azImport.position;
+  const keys = { kp4016: pos.keys.kp4016.map(() => ({ label: '' })), kp5032: pos.keys.kp5032.map(() => ({ label: '' })) };
+  for (const r of azImport.rows) keys[r.panel][r.index] = { label: r.input.value.trim() };
+  viewing = await api('positions/' + pos.id, { method: 'PUT', body: { keys, contact: pos.contact || '', notes: pos.notes || '' } });
+  $('azDlg').close();
+  renderPositionViewer();
   refresh();
 };

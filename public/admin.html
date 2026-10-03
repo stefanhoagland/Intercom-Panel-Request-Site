@@ -59,6 +59,17 @@
 
     <div class="card">
       <div class="row" style="margin-bottom:8px">
+        <h2 style="margin:0;flex:1">AZedit names</h2>
+        <input id="azNamesFile" type="file" accept=".csv,text/csv,text/plain" class="hidden">
+        <button id="azNamesUpload">Upload names list</button>
+        <button id="azNamesDownload">Download</button>
+      </div>
+      <p class="muted" style="margin-top:0">AZedit files store port, party line, IFB and special list numbers, not names. This list turns those numbers into key labels when you import a panel. CSV columns: Type (Port, IN, PL, IFB, SL), Number, Name.</p>
+      <div id="azNamesCount" class="muted"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
         <h2 style="margin:0;flex:1">Reference photos</h2>
         <form id="photoForm" class="row">
           <input id="photoCaption" type="text" placeholder="Caption (optional)" style="width:200px">
@@ -86,6 +97,8 @@
     <button id="vProgrammed" class="primary">Mark programmed</button>
     <button id="vReopen">Reopen for changes</button>
     <button id="vBackup">Save backup</button>
+    <button id="vAzedit">Import from AZedit file</button>
+    <input id="vAzFile" type="file" accept=".adm" class="hidden">
     <span id="vBackupMsg" class="muted"></span>
   </div>
   <div class="row hidden" style="margin-top:16px" id="vBackupActions">
@@ -125,6 +138,22 @@
   </div>
 </dialog>
 
+<dialog id="azDlg">
+  <div class="row" style="margin-bottom:10px">
+    <h2 id="azTitle" style="margin:0;flex:1">Import from AZedit</h2>
+    <button id="azClose">Close</button>
+  </div>
+  <p class="muted" style="margin-top:0">Check the labels and fix any that show a number instead of a name. AZedit keys 33-48 (EKP-4016) go on the KP-4016, keys 17-32 on the KP-5032 top row and keys 1-16 on its bottom row. Applying replaces every key on this position.</p>
+  <div class="table-wrap" style="max-height:55vh;overflow:auto"><table>
+    <thead><tr><th>Panel key</th><th>AZedit key</th><th>Assigned to</th><th>Label</th></tr></thead>
+    <tbody id="azRows"></tbody>
+  </table></div>
+  <div class="row" style="margin-top:12px">
+    <span id="azMissing" class="muted"></span>
+    <button id="azApply" class="primary" style="margin-left:auto">Replace this panel's keys</button>
+  </div>
+</dialog>
+
 <dialog id="editDlg" style="max-width:420px">
   <form id="editForm">
     <h2 style="margin-top:0">Edit position</h2>
@@ -143,6 +172,7 @@
 </dialog>
 
 <script src="/common.js"></script>
+<script src="/azedit.js"></script>
 <script src="/admin.js"></script>
 </body>
 </html>

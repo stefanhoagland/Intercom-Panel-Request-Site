@@ -33,7 +33,7 @@ function emptyKeys() {
 // Hierarchy: show -> control room -> position. Each position owns one KP-4016 + KP-5032.
 function loadDb() {
   if (!fs.existsSync(DB_FILE)) {
-    const db = { shows: [], rooms: [], positions: [], notifications: [], photos: [], backups: [], nextId: 1 };
+    const db = { shows: [], rooms: [], positions: [], notifications: [], photos: [], backups: [], alphas: {}, nextId: 1 };
     const show = newShow(db, 'Sample Show');
     const room = newRoom(db, show.id, 'Control Room A');
     for (const name of ['Director', 'Producer', 'Audio A1', 'Graphics']) {
@@ -44,6 +44,7 @@ function loadDb() {
   const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
   // Data saved before shows existed: put its positions under one show and room.
   db.backups ||= [];
+  db.alphas ||= {};
   if (!db.shows) {
     db.shows = []; db.rooms = [];
     const show = newShow(db, 'My Show');
@@ -418,6 +419,21 @@ async function handleApi(req, res, url) {
       db.backups = db.backups.filter((b) => b !== backup);
       saveDb();
       return send(res, 200, { ok: true });
+    }
+  }
+
+  // Names for AZedit port, party line, IFB and special list numbers, used when importing AZedit files
+  if (parts[0] === 'alphas') {
+    if (!isAdmin) return send(res, 403, { error: 'Admin only' });
+    if (m === 'GET') return send(res, 200, db.alphas);
+    if (m === 'PUT') {
+      const body = await readJson(req);
+      const alphas = {};
+      for (const [k, v] of Object.entries(body.alphas || {})) {
+        if (/^[a-z0-9]{1,6}:\d{1,5}$/.test(k) && str(v, 16)) alphas[k] = str(v, 16);
+      }
+      db.alphas = alphas; saveDb();
+      return send(res, 200, { count: Object.keys(alphas).length });
     }
   }
 
